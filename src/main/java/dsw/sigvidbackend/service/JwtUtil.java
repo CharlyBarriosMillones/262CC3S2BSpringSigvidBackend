@@ -18,11 +18,12 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secretKey;
 
-    // tiempo de expiración del token (ej: 10 horas)
+    // tiempo de expiración del token (10 horas)
     private static final long JWT_TOKEN_VALIDITY = 1000 * 60 * 60 * 10;
 
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String extractUsername(String token) {
@@ -50,7 +51,7 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    // generar el token a partir del correo del usuario
+    // generamos el token a partir del correo del usuario
     public String generateToken(String username) {
         return Jwts.builder()
                 .subject(username)
