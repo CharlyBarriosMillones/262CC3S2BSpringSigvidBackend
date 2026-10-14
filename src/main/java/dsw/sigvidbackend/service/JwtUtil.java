@@ -2,7 +2,9 @@ package dsw.sigvidbackend.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -12,8 +14,9 @@ import java.util.function.Function;
 @Service
 public class JwtUtil {
 
-    // clave secreta para firmar el token.
-    private static final String SECRET_KEY = "SigvidBackendSecretKeyParaJSONWebTokenMuySeguro2026!";
+    /// lee automaticamente jwt.secret desde application.properties -> .env
+    @Value("${jwt.secret}")
+    private String secretKey;
 
     // tiempo de expiración del token (ej: 10 horas)
     private static final long JWT_TOKEN_VALIDITY = 1000 * 60 * 60 * 10;
