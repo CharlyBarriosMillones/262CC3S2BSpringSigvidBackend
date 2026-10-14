@@ -6,26 +6,21 @@ import dsw.sigvidbackend.model.Credencial;
 import dsw.sigvidbackend.model.Usuario;
 import dsw.sigvidbackend.repository.CredencialRepository;
 import dsw.sigvidbackend.repository.UsuarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @Autowired
-    private CredencialRepository credencialRepository;
-
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final UsuarioRepository usuarioRepository;
+    private final CredencialRepository credencialRepository;
+    private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthResponseDTO login(LoginRequestDTO request) {
         
@@ -40,7 +35,7 @@ public class AuthService {
         // validamos contraseña
         // comparamos con el texto plano que llega de angular con el hash de la BD
         if (!passwordEncoder.matches(request.getPassword(), credencial.getPasswordHash())) {
-            throw new RuntimeException("Error: Contraseña incorrecta");
+            throw new RuntimeException("Error: Contrasenia incorrecta");
         }
 
         // atualizamos la fecha del ultimo acceso
