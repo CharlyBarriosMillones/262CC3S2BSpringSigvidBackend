@@ -1,17 +1,21 @@
 package dsw.sigvidbackend.service;
 
-import dsw.sigvidbackend.dto.AuthResponseDTO;
-import dsw.sigvidbackend.dto.LoginRequestDTO;
-import dsw.sigvidbackend.model.Credencial;
-import dsw.sigvidbackend.model.Usuario;
-import dsw.sigvidbackend.repository.CredencialRepository;
-import dsw.sigvidbackend.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import dsw.sigvidbackend.dto.AuthResponseDTO;
+import dsw.sigvidbackend.dto.LoginRequestDTO;
+import dsw.sigvidbackend.dto.RegisterRequestDTO;
+import dsw.sigvidbackend.model.Credencial;
+import dsw.sigvidbackend.model.Rol;
+import dsw.sigvidbackend.model.Usuario;
+import dsw.sigvidbackend.repository.CredencialRepository;
+import dsw.sigvidbackend.repository.RolRepository;
+import dsw.sigvidbackend.repository.UsuarioRepository;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +23,7 @@ public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
     private final CredencialRepository credencialRepository;
+    private final RolRepository rolRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
 
@@ -52,6 +57,63 @@ public class AuthService {
                 usuario.getNombre(),
                 usuario.getApellido(),
                 usuario.getRol().getNombre()
+        );
+    }
+
+    @Transactional
+    public AuthResponseDTO register(RegisterRequestDTO request) {
+        // verificamos que el correo no este registrado
+        if (usuarioRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Error: El correo electrónico ya está registrado");
+        }
+
+        // buuscamos el rol en la BD (si no se especifica sera "Cliente" por defecto)
+        String rolBuscado = (request.getNombreRol() != null && !request.getNombreRol().isBlank())
+                ? request.getNombreRol()
+                : "Cliente";
+
+        Rol rol = rolRepository.findByNombre(rolBuscado)
+                .orElseThrow(() -> new RuntimeException("Error: No se encontró el rol '" + rolBuscado + "' en la base de datos"));
+
+        // crear y guardar el usuario en la tabla 'usuarios'
+        Usuario nuevoUsuario = new Usuario();
+        nuevoUsuario.setNombre(request.getNombre());
+        nuevoUsuario.setApellido(request.getApellido());
+        nuevoUsuario.setDni(request.getDni());
+        nuevoUsuario.setEmail(request.getEmail());
+        nuevoUsuario.setTelefono(request.getTelefono());
+        nuevoUsuario.setTipoUsuario(
+                (request.getTipoUsuario() != null && !request.getTipoUsuario().isBlank())
+                        ? request.getTipoUsuario()
+                        : "CLIENTE"
+        );
+        nuevoUsuario.setRol(rol);
+        nuevoUsuario.setCreatedAt(LocalDateTime.now());
+        nuevoUsuario.setUpdatedAt(LocalDateTime.now());
+
+        Usuario usuarioGuardado = usuarioRepository.save(nuevoUsuario);
+
+        // encriptamos la contraseña y guardamos en la tabla 'credenciales'
+        String hashGenerado = passwordEncoder.encode(request.getPassword());
+        String salExtraida = hashGenerado.substring(0, 29); // sal interna de BCrypt
+
+        Credencial nuevaCredencial = new Credencial();
+        nuevaCredencial.setUsuario(usuarioGuardado);
+        nuevaCredencial.setPasswordHash(hashGenerado);
+        nuevaCredencial.setSal(salExtraida);
+        nuevaCredencial.setUltimoAcceso(LocalDateTime.now());
+
+        credencialRepository.save(nuevaCredencial);
+
+        // generamos el token JWT y se retorna respuesta
+        String token = jwtUtil.generateToken(usuarioGuardado.getEmail());
+
+        return new AuthResponseDTO(
+                token,
+                usuarioGuardado.getEmail(),
+                usuarioGuardado.getNombre(),
+                usuarioGuardado.getApellido(),
+                rol.getNombre()
         );
     }
 }
