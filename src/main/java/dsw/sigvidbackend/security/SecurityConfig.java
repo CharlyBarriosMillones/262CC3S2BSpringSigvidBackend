@@ -3,6 +3,8 @@ package dsw.sigvidbackend.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -19,6 +21,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -31,10 +34,19 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // rutas publicas para login/registro y la documentacion swagger
+                // rutas publicas (login, registro y swagger)
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                // cualquier otra ruta requiere un token JWT que sea valido
+                
+                // rutas exclusivas para el administrador
+                .requestMatchers("/api/roles/**").hasRole("ADMINISTRADOR")
+                .requestMatchers("/api/usuarios/**").hasRole("ADMINISTRADOR")
+                
+                // sucursales - cualquier que se loguea puede ver (GET), pero solo admin puede crear/editar
+                .requestMatchers(HttpMethod.GET, "/api/sucursales/**").authenticated()
+                .requestMatchers("/api/sucursales/**").hasRole("ADMINISTRADOR")
+                
+                // cualquier otra ruta requiere estar autenticado
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
