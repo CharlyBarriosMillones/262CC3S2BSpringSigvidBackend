@@ -1,21 +1,17 @@
 package dsw.sigvidbackend.service;
 
-import java.time.LocalDateTime;
-
+import dsw.sigvidbackend.dto.AuthResponseDTO;
+import dsw.sigvidbackend.dto.LoginRequestDTO;
+import dsw.sigvidbackend.dto.RegisterRequestDTO;
+import dsw.sigvidbackend.model.*;
+import dsw.sigvidbackend.repository.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import dsw.sigvidbackend.dto.AuthResponseDTO;
-import dsw.sigvidbackend.dto.LoginRequestDTO;
-import dsw.sigvidbackend.dto.RegisterRequestDTO;
-import dsw.sigvidbackend.model.Credencial;
-import dsw.sigvidbackend.model.Rol;
-import dsw.sigvidbackend.model.Usuario;
-import dsw.sigvidbackend.repository.CredencialRepository;
-import dsw.sigvidbackend.repository.RolRepository;
-import dsw.sigvidbackend.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +20,11 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final CredencialRepository credencialRepository;
     private final RolRepository rolRepository;
+    private final ClienteRepository clienteRepository;
+    private final AdministradorRepository administradorRepository;
+    private final VendedorRepository vendedorRepository;
+    private final CajeroRepository cajeroRepository;
+    private final TrabajadorAlmacenRepository trabajadorAlmacenRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
 
@@ -40,7 +41,7 @@ public class AuthService {
         // validamos contraseña
         // comparamos con el texto plano que llega de angular con el hash de la BD
         if (!passwordEncoder.matches(request.getPassword(), credencial.getPasswordHash())) {
-            throw new RuntimeException("Error: Contrasenia incorrecta");
+            throw new RuntimeException("Error: Contraseña incorrecta");
         }
 
         // atualizamos la fecha del ultimo acceso
@@ -85,7 +86,7 @@ public class AuthService {
         nuevoUsuario.setTipoUsuario(
                 (request.getTipoUsuario() != null && !request.getTipoUsuario().isBlank())
                         ? request.getTipoUsuario()
-                        : "CLIENTE"
+                        : rol.getNombre().toUpperCase()
         );
         nuevoUsuario.setRol(rol);
         nuevoUsuario.setCreatedAt(LocalDateTime.now());
@@ -105,6 +106,9 @@ public class AuthService {
 
         credencialRepository.save(nuevaCredencial);
 
+        // guardar en la tabla segun el rol
+        guardarEnTablaEspecializada(usuarioGuardado.getIdUsuario(), rol.getNombre(), request);
+
         // generamos el token JWT y se retorna respuesta
         String token = jwtUtil.generateToken(usuarioGuardado.getEmail());
 
@@ -115,5 +119,47 @@ public class AuthService {
                 usuarioGuardado.getApellido(),
                 rol.getNombre()
         );
+    }
+
+    private void guardarEnTablaEspecializada(Long idUsuario, String nombreRol, RegisterRequestDTO request) {
+        switch (nombreRol.toLowerCase()) {
+            case "cliente" -> {
+                Cliente cliente = new Cliente(
+                        idUsuario,
+                        request.getRuc(),
+                        request.getRazonSocial(),
+                        request.getDireccion()
+                );
+                clienteRepository.save(cliente);
+            }
+            case "administrador" -> {
+                String nivel = (request.getNivel() != null && !request.getNivel().isBlank())
+                        ? request.getNivel()
+                        : "General";
+                Administrador admin = new Administrador(idUsuario, nivel);
+                administradorRepository.save(admin);
+            }
+            case "vendedor" -> {
+                String area = (request.getArea() != null && !request.getArea().isBlank())
+                        ? request.getArea()
+                        : "Ventas Generales";
+                Vendedor vendedor = new Vendedor(idUsuario, area);
+                vendedorRepository.save(vendedor);
+            }
+            case "cajero" -> {
+                String caja = (request.getCajaAsignada() != null && !request.getCajaAsignada().isBlank())
+                        ? request.getCajaAsignada()
+                        : "Caja 1";
+                Cajero cajero = new Cajero(idUsuario, caja);
+                cajeroRepository.save(cajero);
+            }
+            case "almacenero" -> {
+                String sede = (request.getUbicacionSede() != null && !request.getUbicacionSede().isBlank())
+                        ? request.getUbicacionSede()
+                        : "Almacén Central";
+                TrabajadorAlmacen almacenero = new TrabajadorAlmacen(idUsuario, sede);
+                trabajadorAlmacenRepository.save(almacenero);
+            }
+        }
     }
 }
