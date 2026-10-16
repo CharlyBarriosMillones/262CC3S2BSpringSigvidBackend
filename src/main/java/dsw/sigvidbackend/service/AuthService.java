@@ -121,6 +121,30 @@ public class AuthService {
         );
     }
 
+    // reesstablecer contraseña en la tabla 'credenciales' verificando email y DNI
+    @Transactional
+    public void recuperarPassword(String email, String dni, String nuevaPassword) {
+        if (email == null || dni == null || nuevaPassword == null || nuevaPassword.length() < 6) {
+            throw new RuntimeException("Error: Datos incompletos o contraseña menor a 6 caracteres");
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(email.trim())
+                .orElseThrow(() -> new RuntimeException("Error: No existe una cuenta con ese correo electrónico"));
+
+        if (!usuario.getDni().equals(dni.trim())) {
+            throw new RuntimeException("Error: El DNI ingresado no coincide con el titular del correo");
+        }
+
+        Credencial credencial = credencialRepository.findByUsuario(usuario)
+                .orElseThrow(() -> new RuntimeException("Error: Credenciales no encontradas para este usuario"));
+
+        String nuevoHash = passwordEncoder.encode(nuevaPassword);
+        credencial.setPasswordHash(nuevoHash);
+        credencial.setSal(nuevoHash.substring(0, 29));
+        credencial.setUltimoAcceso(LocalDateTime.now());
+        credencialRepository.save(credencial);
+    }
+
     private void guardarEnTablaEspecializada(Long idUsuario, String nombreRol, RegisterRequestDTO request) {
         switch (nombreRol.toLowerCase()) {
             case "cliente" -> {
