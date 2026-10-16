@@ -10,7 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +40,71 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado con ID: " + id));
         return mapToResponse(usuario);
+    }
+
+    // consultar perfil del usuario logueado
+    public Map<String, Object> obtenerPerfilPorEmail(String email) {
+        Usuario u = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado con email: " + email));
+        return mapPerfilToMap(u);
+    }
+
+    // guardar cambios de perfil, foto, preferencias y notificaciones
+    @Transactional
+    public Map<String, Object> actualizarPerfilPorEmail(Map<String, Object> datos) {
+        String email = (String) datos.get("email");
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado con email: " + email));
+
+        if (datos.get("nombre") != null) {
+            usuario.setNombre(datos.get("nombre").toString().trim());
+        }
+        if (datos.get("apellido") != null) {
+            usuario.setApellido(datos.get("apellido").toString().trim());
+        }
+        if (datos.containsKey("telefono")) {
+            usuario.setTelefono(datos.get("telefono") != null ? datos.get("telefono").toString().trim() : null);
+        }
+        if (datos.containsKey("fotoPerfil")) {
+            usuario.setFotoPerfil(datos.get("fotoPerfil") != null ? datos.get("fotoPerfil").toString() : null);
+        }
+        if (datos.get("preferenciaCategoria") != null) {
+            usuario.setPreferenciaCategoria(datos.get("preferenciaCategoria").toString());
+        }
+        if (datos.get("preferenciaMaridaje") != null) {
+            usuario.setPreferenciaMaridaje(datos.get("preferenciaMaridaje").toString());
+        }
+        if (datos.get("notifEstadoPedidos") != null) {
+            usuario.setNotifPedidos(Boolean.valueOf(datos.get("notifEstadoPedidos").toString()));
+        }
+        if (datos.get("notifPromocionesEmail") != null) {
+            usuario.setNotifPromociones(Boolean.valueOf(datos.get("notifPromocionesEmail").toString()));
+        }
+        if (datos.get("notifNuevasCosechas") != null) {
+            usuario.setNotifCosechas(Boolean.valueOf(datos.get("notifNuevasCosechas").toString()));
+        }
+
+        usuario.setUpdatedAt(LocalDateTime.now());
+        Usuario guardado = usuarioRepository.save(usuario);
+        return mapPerfilToMap(guardado);
+    }
+
+    private Map<String, Object> mapPerfilToMap(Usuario u) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("idUsuario", u.getIdUsuario());
+        map.put("nombre", u.getNombre());
+        map.put("apellido", u.getApellido());
+        map.put("dni", u.getDni());
+        map.put("email", u.getEmail());
+        map.put("telefono", u.getTelefono());
+        map.put("rol", u.getRol().getNombre());
+        map.put("fotoPerfil", u.getFotoPerfil());
+        map.put("preferenciaCategoria", u.getPreferenciaCategoria() != null ? u.getPreferenciaCategoria() : "Vinos Tintos Gran Reserva");
+        map.put("preferenciaMaridaje", u.getPreferenciaMaridaje() != null ? u.getPreferenciaMaridaje() : "Carnes rojas y quesos maduros");
+        map.put("notifEstadoPedidos", u.getNotifPedidos() != null ? u.getNotifPedidos() : true);
+        map.put("notifPromocionesEmail", u.getNotifPromociones() != null ? u.getNotifPromociones() : true);
+        map.put("notifNuevasCosechas", u.getNotifCosechas() != null ? u.getNotifCosechas() : false);
+        return map;
     }
 
     @Transactional

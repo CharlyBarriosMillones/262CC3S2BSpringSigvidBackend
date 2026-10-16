@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -20,6 +21,18 @@ public class UsuarioController {
     @GetMapping
     public ResponseEntity<List<UsuarioResponseDTO>> listarTodos() {
         return ResponseEntity.ok(usuarioService.listarUsuarios());
+    }
+
+    // obtener datos completos de perfil
+    @GetMapping("/perfil")
+    public ResponseEntity<Map<String, Object>> obtenerPerfil(@RequestParam String email) {
+        return ResponseEntity.ok(usuarioService.obtenerPerfilPorEmail(email));
+    }
+
+    // actualizar nombre, apellido, telefono, foto y notificaciones
+    @PutMapping("/perfil")
+    public ResponseEntity<Map<String, Object>> actualizarPerfil(@RequestBody Map<String, Object> datos) {
+        return ResponseEntity.ok(usuarioService.actualizarPerfilPorEmail(datos));
     }
 
     @GetMapping("/{id}")

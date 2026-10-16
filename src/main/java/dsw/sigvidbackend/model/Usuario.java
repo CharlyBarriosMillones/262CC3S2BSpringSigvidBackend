@@ -49,4 +49,23 @@ public class Usuario {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // foto de perfil, preferencias y notificaciones por email
+    @Column(name = "foto_perfil", columnDefinition = "TEXT")
+    private String fotoPerfil;
+
+    @Column(name = "preferencia_categoria", length = 100)
+    private String preferenciaCategoria = "Vinos Tintos Gran Reserva";
+
+    @Column(name = "preferencia_maridaje", length = 150)
+    private String preferenciaMaridaje = "Carnes rojas y quesos maduros";
+
+    @Column(name = "notif_pedidos")
+    private Boolean notifPedidos = true;
+
+    @Column(name = "notif_promociones")
+    private Boolean notifPromociones = true;
+
+    @Column(name = "notif_cosechas")
+    private Boolean notifCosechas = false;
 }
