@@ -1,13 +1,16 @@
 package dsw.sigvidbackend.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UsuarioRequestDTO {
+public class UsuarioRequest {
+    private Long idUsuario;
     private String nombre;
     private String apellido;
     private String dni;
@@ -15,5 +18,6 @@ public class UsuarioRequestDTO {
     private String telefono;
     private String tipoUsuario;
     private Long idRol;
-    private String password; // es opcional al actualizar pero requerido al crear
+    private Long idSucursal;
+    private String password;
 }
