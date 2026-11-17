@@ -3,28 +3,44 @@ package dsw.sigvidbackend.security;
 import dsw.sigvidbackend.model.Usuario;
 import dsw.sigvidbackend.repository.UsuarioRepository;
 import dsw.sigvidbackend.service.JwtUtil;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Optional;
+import java.util.List;
 
 @Component
-@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
+    private final JwtUtil jwtService;
     private final UsuarioRepository usuarioRepository;
+    private final HandlerExceptionResolver handlerExceptionResolver;
+
+    public JwtAuthenticationFilter(
+            JwtUtil jwtService,
+            UsuarioRepository usuarioRepository,
+            @Qualifier("handlerExceptionResolver") @Lazy HandlerExceptionResolver handlerExceptionResolver) {
+        this.jwtService = jwtService;
+        this.usuarioRepository = usuarioRepository;
+        this.handlerExceptionResolver = handlerExceptionResolver;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -33,42 +49,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        String email = null;
-        String jwt = null;
-
-        // verificams si la peticion trae un token bearer
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            jwt = authHeader.substring(7);
-            try {
-                email = jwtUtil.extractUsername(jwt);
-            } catch (Exception e) {
-                // si el token es invalido o expiro, continuamos sin autenticar
-                logger.warn("Error al extraer usuario del token JWT: " + e.getMessage());
-            }
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // si hemos obtenido el email y el usuario aun no esta autenticado en este hilo
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(email);
+        try {
+            final String jwt = authHeader.substring(7);
+            final String userEmail = jwtService.extractUsername(jwt);
 
-            if (usuarioOpt.isPresent() && jwtUtil.validateToken(jwt, email)) {
-                Usuario usuario = usuarioOpt.get();
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                Usuario usuario = usuarioRepository.findByEmail(userEmail).orElse(null);
 
-                // asignamos el rol de la base de datos como autoridad de spring security
-                SimpleGrantedAuthority authority = new SimpleGrantedAuthority(
-                        "ROLE_" + usuario.getRol().getNombre().toUpperCase()
-                );
+                if (usuario != null && jwtService.isTokenValid(jwt, usuario)) {
+                    List<SimpleGrantedAuthority> authorities = usuario.getRol() != null
+                            ? List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().getNombre().toUpperCase()))
+                            : Collections.emptyList();
 
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        usuario, null, Collections.singletonList(authority)
-                );
-
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            usuario,
+                            null,
+                            authorities
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
+            filterChain.doFilter(request, response);
+        } catch (JwtException | IllegalArgumentException ex) {
+            logger.warn("Token JWT inválido o expirado: {}", ex.getMessage());
+            handlerExceptionResolver.resolveException(request, response, null, ex);
         }
-
-        // coontinuamos con la peticion
-        filterChain.doFilter(request, response);
     }
 }
