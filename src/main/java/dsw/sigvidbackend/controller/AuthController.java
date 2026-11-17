@@ -2,39 +2,49 @@ package dsw.sigvidbackend.controller;
 
 import dsw.sigvidbackend.dto.AuthResponseDTO;
 import dsw.sigvidbackend.dto.LoginRequestDTO;
+import dsw.sigvidbackend.dto.RecuperarPasswordRequestDTO;
 import dsw.sigvidbackend.dto.RegisterRequestDTO;
 import dsw.sigvidbackend.service.AuthService;
+import dsw.sigvidbackend.util.ObjectResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private final AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginRequestDTO request) {
+        logger.info(">login: {}", request.getEmail());
         return ResponseEntity.ok(authService.login(request));
     }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDTO> register(@RequestBody RegisterRequestDTO request) {
+        logger.info(">register: {}", request.getEmail());
         return ResponseEntity.ok(authService.register(request));
     }
 
-    // recuperar contraseña validando email y DNI
     @PostMapping("/recuperar-password")
-    public ResponseEntity<Map<String, String>> recuperarPassword(@RequestBody Map<String, String> request) {
+    public ResponseEntity<ObjectResponse<Void>> recuperarPassword(@RequestBody RecuperarPasswordRequestDTO request) {
+        logger.info(">recuperarPassword: {}", request.getEmail());
         authService.recuperarPassword(
-                request.get("email"),
-                request.get("dni"),
-                request.get("nuevaPassword")
+                request.getEmail(),
+                request.getDni(),
+                request.getNuevaPassword()
         );
-        return ResponseEntity.ok(Map.of("message", "Contraseña actualizada correctamente en la base de datos"));
+        return ResponseEntity.ok(
+                ObjectResponse.<Void>builder()
+                        .success(true)
+                        .message("Contraseña actualizada correctamente en la base de datos")
+                        .build()
+        );
     }
 }
