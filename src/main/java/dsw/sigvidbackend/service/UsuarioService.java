@@ -1,7 +1,8 @@
 package dsw.sigvidbackend.service;
 
-import dsw.sigvidbackend.dto.UsuarioRequestDTO;
-import dsw.sigvidbackend.dto.UsuarioResponseDTO;
+import dsw.sigvidbackend.dto.PerfilUpdateRequest;
+import dsw.sigvidbackend.dto.UsuarioRequest;
+import dsw.sigvidbackend.dto.UsuarioResponse;
 import dsw.sigvidbackend.model.*;
 import dsw.sigvidbackend.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -10,10 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
@@ -29,98 +28,85 @@ public class UsuarioService {
     private final TrabajadorAlmacenRepository trabajadorAlmacenRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public List<UsuarioResponseDTO> listarUsuarios() {
-        return usuarioRepository.findAll()
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    public List<UsuarioResponse> listarUsuarios() {
+        return UsuarioResponse.fromEntities(usuarioRepository.findAllByOrderByIdUsuarioDesc());
     }
 
-    public UsuarioResponseDTO obtenerPorId(Long id) {
+    public UsuarioResponse obtenerPorId(Long id) {
         Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado con ID: " + id));
-        return mapToResponse(usuario);
+                .orElseThrow(() -> new NoSuchElementException("Usuario no encontrado con ID: " + id));
+        return UsuarioResponse.fromEntity(usuario);
     }
 
-    // consultar perfil del usuario logueado
-    public Map<String, Object> obtenerPerfilPorEmail(String email) {
-        Usuario u = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado con email: " + email));
-        return mapPerfilToMap(u);
+    public UsuarioResponse buscarPorDocumento(String documento) {
+        return usuarioRepository.findByDni(documento.trim())
+                .map(UsuarioResponse::fromEntity)
+                .orElseThrow(() -> new NoSuchElementException("No se encontró cliente/usuario con documento: " + documento));
     }
 
-    // guardar cambios de perfil, foto, preferencias y notificaciones
+    public UsuarioResponse obtenerPerfilPorEmail(String email) {
+        Usuario u = usuarioRepository.findByEmail(email.trim())
+                .orElseThrow(() -> new NoSuchElementException("Usuario no encontrado con email: " + email));
+        return UsuarioResponse.fromEntity(u);
+    }
+
     @Transactional
-    public Map<String, Object> actualizarPerfilPorEmail(Map<String, Object> datos) {
-        String email = (String) datos.get("email");
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado con email: " + email));
+    public UsuarioResponse actualizarPerfilPorEmail(PerfilUpdateRequest datos) {
+        if (datos.getEmail() == null || datos.getEmail().isBlank()) {
+            throw new IllegalArgumentException("El correo del usuario es obligatorio para actualizar el perfil");
+        }
+        Usuario usuario = usuarioRepository.findByEmail(datos.getEmail().trim())
+                .orElseThrow(() -> new NoSuchElementException("Usuario no encontrado con email: " + datos.getEmail()));
 
-        if (datos.get("nombre") != null) {
-            usuario.setNombre(datos.get("nombre").toString().trim());
+        if (datos.getNombre() != null && !datos.getNombre().isBlank()) {
+            usuario.setNombre(datos.getNombre().trim());
         }
-        if (datos.get("apellido") != null) {
-            usuario.setApellido(datos.get("apellido").toString().trim());
+        if (datos.getApellido() != null && !datos.getApellido().isBlank()) {
+            usuario.setApellido(datos.getApellido().trim());
         }
-        if (datos.containsKey("telefono")) {
-            usuario.setTelefono(datos.get("telefono") != null ? datos.get("telefono").toString().trim() : null);
+        if (datos.getTelefono() != null) {
+            usuario.setTelefono(datos.getTelefono().trim());
         }
-        if (datos.containsKey("fotoPerfil")) {
-            usuario.setFotoPerfil(datos.get("fotoPerfil") != null ? datos.get("fotoPerfil").toString() : null);
+        usuario.setFotoPerfil(datos.getFotoPerfil());
+
+        if (datos.getPreferenciaCategoria() != null) {
+            usuario.setPreferenciaCategoria(datos.getPreferenciaCategoria());
         }
-        if (datos.get("preferenciaCategoria") != null) {
-            usuario.setPreferenciaCategoria(datos.get("preferenciaCategoria").toString());
+        if (datos.getPreferenciaMaridaje() != null) {
+            usuario.setPreferenciaMaridaje(datos.getPreferenciaMaridaje());
         }
-        if (datos.get("preferenciaMaridaje") != null) {
-            usuario.setPreferenciaMaridaje(datos.get("preferenciaMaridaje").toString());
+        if (datos.getNotifEstadoPedidos() != null) {
+            usuario.setNotifPedidos(datos.getNotifEstadoPedidos());
         }
-        if (datos.get("notifEstadoPedidos") != null) {
-            usuario.setNotifPedidos(Boolean.valueOf(datos.get("notifEstadoPedidos").toString()));
+        if (datos.getNotifPromocionesEmail() != null) {
+            usuario.setNotifPromociones(datos.getNotifPromocionesEmail());
         }
-        if (datos.get("notifPromocionesEmail") != null) {
-            usuario.setNotifPromociones(Boolean.valueOf(datos.get("notifPromocionesEmail").toString()));
-        }
-        if (datos.get("notifNuevasCosechas") != null) {
-            usuario.setNotifCosechas(Boolean.valueOf(datos.get("notifNuevasCosechas").toString()));
+        if (datos.getNotifNuevasCosechas() != null) {
+            usuario.setNotifCosechas(datos.getNotifNuevasCosechas());
         }
 
         usuario.setUpdatedAt(LocalDateTime.now());
-        Usuario guardado = usuarioRepository.save(usuario);
-        return mapPerfilToMap(guardado);
-    }
-
-    private Map<String, Object> mapPerfilToMap(Usuario u) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("idUsuario", u.getIdUsuario());
-        map.put("nombre", u.getNombre());
-        map.put("apellido", u.getApellido());
-        map.put("dni", u.getDni());
-        map.put("email", u.getEmail());
-        map.put("telefono", u.getTelefono());
-        map.put("rol", u.getRol().getNombre());
-        map.put("fotoPerfil", u.getFotoPerfil());
-        map.put("preferenciaCategoria", u.getPreferenciaCategoria() != null ? u.getPreferenciaCategoria() : "Vinos Tintos Gran Reserva");
-        map.put("preferenciaMaridaje", u.getPreferenciaMaridaje() != null ? u.getPreferenciaMaridaje() : "Carnes rojas y quesos maduros");
-        map.put("notifEstadoPedidos", u.getNotifPedidos() != null ? u.getNotifPedidos() : true);
-        map.put("notifPromocionesEmail", u.getNotifPromociones() != null ? u.getNotifPromociones() : true);
-        map.put("notifNuevasCosechas", u.getNotifCosechas() != null ? u.getNotifCosechas() : false);
-        return map;
+        Usuario guardado = usuarioRepository.saveAndFlush(usuario);
+        return UsuarioResponse.fromEntity(guardado);
     }
 
     @Transactional
-    public UsuarioResponseDTO crearUsuario(UsuarioRequestDTO request) {
-        if (usuarioRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Error: El correo electrónico ya está registrado");
+    public UsuarioResponse crearUsuario(UsuarioRequest request) {
+        if (usuarioRepository.existsByEmail(request.getEmail().trim())) {
+            throw new IllegalArgumentException("El correo electrónico ya está registrado");
+        }
+        if (request.getDni() != null && usuarioRepository.existsByDni(request.getDni().trim())) {
+            throw new IllegalArgumentException("El DNI ya está registrado");
         }
 
         Rol rol = rolRepository.findById(request.getIdRol())
-                .orElseThrow(() -> new RuntimeException("Error: Rol no encontrado con ID: " + request.getIdRol()));
+                .orElseThrow(() -> new NoSuchElementException("Rol no encontrado con ID: " + request.getIdRol()));
 
         Usuario usuario = new Usuario();
-        usuario.setNombre(request.getNombre());
-        usuario.setApellido(request.getApellido());
-        usuario.setDni(request.getDni());
-        usuario.setEmail(request.getEmail());
+        usuario.setNombre(request.getNombre().trim());
+        usuario.setApellido(request.getApellido().trim());
+        usuario.setDni(request.getDni().trim());
+        usuario.setEmail(request.getEmail().trim());
         usuario.setTelefono(request.getTelefono());
         usuario.setTipoUsuario(
                 (request.getTipoUsuario() != null && !request.getTipoUsuario().isBlank())
@@ -128,15 +114,15 @@ public class UsuarioService {
                         : rol.getNombre().toUpperCase()
         );
         usuario.setRol(rol);
+        usuario.setIdSucursal(request.getIdSucursal() != null ? request.getIdSucursal() : 1L);
         usuario.setCreatedAt(LocalDateTime.now());
         usuario.setUpdatedAt(LocalDateTime.now());
 
-        Usuario guardado = usuarioRepository.save(usuario);
+        Usuario guardado = usuarioRepository.saveAndFlush(usuario);
 
-        // se crea credencial por defecto o con la contraseña enviada
         String rawPassword = (request.getPassword() != null && !request.getPassword().isBlank())
                 ? request.getPassword()
-                : request.getDni(); // si no se envia clave, se usa DNI como clave inicial
+                : request.getDni();
 
         String hash = passwordEncoder.encode(rawPassword);
         Credencial credencial = new Credencial();
@@ -146,32 +132,33 @@ public class UsuarioService {
         credencial.setUltimoAcceso(LocalDateTime.now());
         credencialRepository.save(credencial);
 
-        // registrar en su tabla segun el rol
         registrarEspecializacionPorDefecto(guardado.getIdUsuario(), rol.getNombre());
 
-        return mapToResponse(guardado);
+        return UsuarioResponse.fromEntity(guardado);
     }
 
     @Transactional
-    public UsuarioResponseDTO actualizarUsuario(Long id, UsuarioRequestDTO request) {
+    public UsuarioResponse actualizarUsuario(Long id, UsuarioRequest request) {
         Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado con ID: " + id));
+                .orElseThrow(() -> new NoSuchElementException("Usuario no encontrado con ID: " + id));
 
         Rol rol = rolRepository.findById(request.getIdRol())
-                .orElseThrow(() -> new RuntimeException("Error: Rol no encontrado con ID: " + request.getIdRol()));
+                .orElseThrow(() -> new NoSuchElementException("Rol no encontrado con ID: " + request.getIdRol()));
 
-        usuario.setNombre(request.getNombre());
-        usuario.setApellido(request.getApellido());
-        usuario.setDni(request.getDni());
-        usuario.setEmail(request.getEmail());
+        usuario.setNombre(request.getNombre().trim());
+        usuario.setApellido(request.getApellido().trim());
+        usuario.setDni(request.getDni().trim());
+        usuario.setEmail(request.getEmail().trim());
         usuario.setTelefono(request.getTelefono());
         if (request.getTipoUsuario() != null && !request.getTipoUsuario().isBlank()) {
             usuario.setTipoUsuario(request.getTipoUsuario());
         }
         usuario.setRol(rol);
+        if (request.getIdSucursal() != null) {
+            usuario.setIdSucursal(request.getIdSucursal());
+        }
         usuario.setUpdatedAt(LocalDateTime.now());
 
-        // si envia una nueva contraseña al actualizar, se actualiza en credenciales
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             credencialRepository.findByUsuario(usuario).ifPresent(cred -> {
                 String nuevoHash = passwordEncoder.encode(request.getPassword());
@@ -181,16 +168,15 @@ public class UsuarioService {
             });
         }
 
-        Usuario actualizado = usuarioRepository.save(usuario);
-        return mapToResponse(actualizado);
+        Usuario actualizado = usuarioRepository.saveAndFlush(usuario);
+        return UsuarioResponse.fromEntity(actualizado);
     }
 
     @Transactional
     public void eliminarUsuario(Long id) {
         Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado con ID: " + id));
+                .orElseThrow(() -> new NoSuchElementException("Usuario no encontrado con ID: " + id));
 
-        // limpiar registros en tablas antes de eliminar el usuario base
         if (clienteRepository.existsById(id)) clienteRepository.deleteById(id);
         if (administradorRepository.existsById(id)) administradorRepository.deleteById(id);
         if (vendedorRepository.existsById(id)) vendedorRepository.deleteById(id);
@@ -209,21 +195,5 @@ public class UsuarioService {
             case "cajero" -> cajeroRepository.save(new Cajero(idUsuario, "Caja 1"));
             case "almacenero" -> trabajadorAlmacenRepository.save(new TrabajadorAlmacen(idUsuario, "Almacén Central"));
         }
-    }
-
-    private UsuarioResponseDTO mapToResponse(Usuario u) {
-        return new UsuarioResponseDTO(
-                u.getIdUsuario(),
-                u.getNombre(),
-                u.getApellido(),
-                u.getDni(),
-                u.getEmail(),
-                u.getTelefono(),
-                u.getTipoUsuario(),
-                u.getRol().getIdRol(),
-                u.getRol().getNombre(),
-                u.getCreatedAt(),
-                u.getUpdatedAt()
-        );
     }
 }
