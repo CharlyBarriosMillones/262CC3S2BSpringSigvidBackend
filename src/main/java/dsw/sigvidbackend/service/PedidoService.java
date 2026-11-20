@@ -64,16 +64,25 @@ public class PedidoService {
             throw new IllegalArgumentException("El pedido debe incluir al menos un producto");
         }
 
-        // obtener o buscar el cliente por ID o DNI
+        // obtener o buscar el cliente por ID, DNI (8 digitos) o RUC (11 digitos)
         Usuario cliente;
         if (request.getIdCliente() != null) {
             cliente = usuarioRepository.findById(request.getIdCliente())
                     .orElseThrow(() -> new NoSuchElementException("Cliente no encontrado con ID: " + request.getIdCliente()));
         } else if (request.getDocumentoCliente() != null && !request.getDocumentoCliente().isBlank()) {
-            cliente = usuarioRepository.findByDni(request.getDocumentoCliente().trim())
-                    .orElseThrow(() -> new NoSuchElementException("No se encontró cliente con DNI: " + request.getDocumentoCliente()));
+            String doc = request.getDocumentoCliente().trim();
+            if (doc.length() == 11) {
+                Long idUsuarioRuc = clienteRepository.findByRuc(doc)
+                        .orElseThrow(() -> new NoSuchElementException("No se encontró cliente con RUC: " + doc))
+                        .getIdUsuario();
+                cliente = usuarioRepository.findById(idUsuarioRuc)
+                        .orElseThrow(() -> new NoSuchElementException("No se encontró el usuario del RUC: " + doc));
+            } else {
+                cliente = usuarioRepository.findByDni(doc)
+                        .orElseThrow(() -> new NoSuchElementException("No se encontró cliente con DNI: " + doc));
+            }
         } else {
-            throw new IllegalArgumentException("Debe indicar el ID o DNI del cliente");
+            throw new IllegalArgumentException("Debe indicar el ID, DNI o RUC del cliente");
         }
 
         // asegurar registro en tabla "clientes" 

@@ -1,5 +1,7 @@
 package dsw.sigvidbackend.controller;
 
+import jakarta.validation.Valid;
+
 import dsw.sigvidbackend.dto.SucursalRequest;
 import dsw.sigvidbackend.dto.SucursalResponse;
 import dsw.sigvidbackend.service.SucursalService;
@@ -30,7 +32,7 @@ public class SucursalController {
     }
 
     @PostMapping
-    public ResponseEntity<SucursalResponse> crearSucursal(@RequestBody SucursalRequest request) {
+    public ResponseEntity<SucursalResponse> crearSucursal(@Valid @RequestBody SucursalRequest request) {
         logger.info(">crearSucursal: {}", request);
         return ResponseEntity.ok(sucursalService.guardarSucursal(request));
     }

@@ -1,5 +1,10 @@
 package dsw.sigvidbackend.controller;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import dsw.sigvidbackend.model.Usuario;
+
+import jakarta.validation.Valid;
+
 import dsw.sigvidbackend.dto.PedidoRequest;
 import dsw.sigvidbackend.dto.PedidoResponse;
 import dsw.sigvidbackend.service.PedidoService;
@@ -34,13 +39,14 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoService.listarTodos());
     }
 
+    // historial del cliente: se usa el email del token (no el del request) para evitar ver pedidos ajenos
     @GetMapping("/cliente")
-    public ResponseEntity<List<PedidoResponse>> listarPorCliente(@RequestParam String email) {
-        return ResponseEntity.ok(pedidoService.listarPorEmailCliente(email));
+    public ResponseEntity<List<PedidoResponse>> listarPorCliente(@AuthenticationPrincipal Usuario usuario) {
+        return ResponseEntity.ok(pedidoService.listarPorEmailCliente(usuario.getEmail()));
     }
 
     @PostMapping
-    public ResponseEntity<ObjectResponse<PedidoResponse>> registrarPedido(@RequestBody PedidoRequest request) {
+    public ResponseEntity<ObjectResponse<PedidoResponse>> registrarPedido(@Valid @RequestBody PedidoRequest request) {
         logger.info(">registrarPedido cliente={}", request.getDocumentoCliente());
         PedidoResponse response = pedidoService.registrarPedido(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(

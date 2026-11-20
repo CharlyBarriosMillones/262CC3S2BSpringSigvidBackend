@@ -28,6 +28,9 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<!-- lombok 1.18.48: compatible con javac 27 (lo usa la extension Java de Oracle en VS Code);
+		     con 1.18.46 el IDE marcaba falsos errores "cannot find symbol" en getters/builders -->
+		<lombok.version>1.18.48</lombok.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -91,6 +94,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<!-- actuator: endpoints de salud e info (igual que el proyecto base) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
 		<!-- Source: https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-impl -->

@@ -5,6 +5,7 @@ import dsw.sigvidbackend.dto.UsuarioRequest;
 import dsw.sigvidbackend.dto.UsuarioResponse;
 import dsw.sigvidbackend.model.*;
 import dsw.sigvidbackend.repository.*;
+import dsw.sigvidbackend.util.Patrones;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -38,10 +39,22 @@ public class UsuarioService {
         return UsuarioResponse.fromEntity(usuario);
     }
 
+    // busca al cliente por DNI (8 digitos) o por RUC (11 digitos, tabla clientes)
     public UsuarioResponse buscarPorDocumento(String documento) {
-        return usuarioRepository.findByDni(documento.trim())
-                .map(UsuarioResponse::fromEntity)
-                .orElseThrow(() -> new NoSuchElementException("No se encontró cliente/usuario con documento: " + documento));
+        String doc = documento == null ? "" : documento.trim();
+        if (doc.matches(Patrones.DNI)) {
+            return usuarioRepository.findByDni(doc)
+                    .map(UsuarioResponse::fromEntity)
+                    .orElseThrow(() -> new NoSuchElementException("No se encontró cliente con DNI: " + doc));
+        }
+        if (doc.matches(Patrones.RUC)) {
+            Cliente cliente = clienteRepository.findByRuc(doc)
+                    .orElseThrow(() -> new NoSuchElementException("No se encontró cliente con RUC: " + doc));
+            return usuarioRepository.findById(cliente.getIdUsuario())
+                    .map(UsuarioResponse::fromEntity)
+                    .orElseThrow(() -> new NoSuchElementException("No se encontró el usuario del RUC: " + doc));
+        }
+        throw new IllegalArgumentException("El documento debe ser un DNI de 8 dígitos o un RUC de 11 dígitos");
     }
 
     public UsuarioResponse obtenerPerfilPorEmail(String email) {

@@ -81,9 +81,9 @@ public class AuthService {
             throw new IllegalArgumentException("El DNI ingresado ya se encuentra registrado");
         }
 
-        String rolBuscado = (request.getNombreRol() != null && !request.getNombreRol().isBlank())
-                ? request.getNombreRol().trim()
-                : "Cliente";
+        // el registro publico siempre crea un Cliente; el personal (vendedor, cajero, etc.)
+        // lo crea el Administrador desde /api/usuarios (evita escalada de privilegios)
+        String rolBuscado = "Cliente";
 
         Rol rol = rolRepository.findByNombreIgnoreCase(rolBuscado)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró el rol '" + rolBuscado + "' en la base de datos"));
@@ -94,11 +94,7 @@ public class AuthService {
         nuevoUsuario.setDni(request.getDni() != null ? request.getDni().trim() : null);
         nuevoUsuario.setEmail(request.getEmail().trim());
         nuevoUsuario.setTelefono(request.getTelefono());
-        nuevoUsuario.setTipoUsuario(
-                (request.getTipoUsuario() != null && !request.getTipoUsuario().isBlank())
-                        ? request.getTipoUsuario()
-                        : rol.getNombre().toUpperCase()
-        );
+        nuevoUsuario.setTipoUsuario(rol.getNombre().toUpperCase());
         nuevoUsuario.setRol(rol);
         nuevoUsuario.setIdSucursal(1L);
         nuevoUsuario.setCreatedAt(LocalDateTime.now());

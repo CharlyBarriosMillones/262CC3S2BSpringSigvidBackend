@@ -1,6 +1,8 @@
 package dsw.sigvidbackend.dto;
 
 import dsw.sigvidbackend.model.Sucursal;
+import jakarta.validation.constraints.*;
+import dsw.sigvidbackend.util.Patrones;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,8 +14,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SucursalRequest {
     private Long idSucursal;
+    @NotBlank(message = "El nombre de la sucursal es obligatorio")
+    @Size(max = 100, message = "El nombre admite máximo 100 caracteres")
+    @Pattern(regexp = Patrones.TEXTO_SEGURO, message = "El nombre contiene caracteres no permitidos")
     private String nombre;
+    @NotBlank(message = "La dirección es obligatoria")
+    @Pattern(regexp = Patrones.TEXTO_SEGURO, message = "La dirección contiene caracteres no permitidos")
     private String direccion;
+    @Pattern(regexp = Patrones.TELEFONO, message = "El teléfono debe tener de 7 a 15 dígitos")
     private String telefono;
 
     public static Sucursal toEntity(SucursalRequest request) {

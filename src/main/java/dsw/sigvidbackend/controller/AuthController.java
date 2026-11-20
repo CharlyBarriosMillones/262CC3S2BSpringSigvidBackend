@@ -1,5 +1,7 @@
 package dsw.sigvidbackend.controller;
 
+import jakarta.validation.Valid;
+
 import dsw.sigvidbackend.dto.AuthResponseDTO;
 import dsw.sigvidbackend.dto.LoginRequestDTO;
 import dsw.sigvidbackend.dto.RecuperarPasswordRequestDTO;
@@ -21,19 +23,19 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginRequestDTO request) {
+    public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
         logger.info(">login: {}", request.getEmail());
         return ResponseEntity.ok(authService.login(request));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponseDTO> register(@RequestBody RegisterRequestDTO request) {
+    public ResponseEntity<AuthResponseDTO> register(@Valid @RequestBody RegisterRequestDTO request) {
         logger.info(">register: {}", request.getEmail());
         return ResponseEntity.ok(authService.register(request));
     }
 
     @PostMapping("/recuperar-password")
-    public ResponseEntity<ObjectResponse<Void>> recuperarPassword(@RequestBody RecuperarPasswordRequestDTO request) {
+    public ResponseEntity<ObjectResponse<Void>> recuperarPassword(@Valid @RequestBody RecuperarPasswordRequestDTO request) {
         logger.info(">recuperarPassword: {}", request.getEmail());
         authService.recuperarPassword(
                 request.getEmail(),

@@ -1,5 +1,7 @@
 package dsw.sigvidbackend.controller;
 
+import jakarta.validation.Valid;
+
 import dsw.sigvidbackend.dto.RolRequest;
 import dsw.sigvidbackend.dto.RolResponse;
 import dsw.sigvidbackend.service.RolService;
@@ -30,7 +32,7 @@ public class RolController {
     }
 
     @PostMapping("/save")
-    public ResponseEntity<RolResponse> guardar(@RequestBody RolRequest request) {
+    public ResponseEntity<RolResponse> guardar(@Valid @RequestBody RolRequest request) {
         logger.info(">save rol: {}", request);
         return ResponseEntity.ok(rolService.guardar(request));
     }

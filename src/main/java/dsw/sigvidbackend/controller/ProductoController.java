@@ -1,5 +1,7 @@
 package dsw.sigvidbackend.controller;
 
+import jakarta.validation.Valid;
+
 import dsw.sigvidbackend.dto.ProductoRequest;
 import dsw.sigvidbackend.dto.ProductoResponse;
 import dsw.sigvidbackend.model.Categoria;
@@ -45,7 +47,7 @@ public class ProductoController {
     }
 
     @PostMapping("/save")
-    public ResponseEntity<ProductoResponse> guardar(@RequestBody ProductoRequest request) {
+    public ResponseEntity<ProductoResponse> guardar(@Valid @RequestBody ProductoRequest request) {
         logger.info(">guardarProducto: {}", request.getNombre());
         return ResponseEntity.ok(productoService.guardarProducto(request));
     }

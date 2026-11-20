@@ -1,5 +1,7 @@
 package dsw.sigvidbackend.controller;
 
+import jakarta.validation.Valid;
+
 import dsw.sigvidbackend.dto.PagoRequest;
 import dsw.sigvidbackend.dto.PagoResponse;
 import dsw.sigvidbackend.model.Caja;
@@ -39,7 +41,7 @@ public class PagoController {
     }
 
     @PostMapping
-    public ResponseEntity<ObjectResponse<PagoResponse>> registrarPago(@RequestBody PagoRequest request) {
+    public ResponseEntity<ObjectResponse<PagoResponse>> registrarPago(@Valid @RequestBody PagoRequest request) {
         logger.info(">registrarPago idPedido={}", request.getIdPedido());
         PagoResponse response = pagoService.registrarPago(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(

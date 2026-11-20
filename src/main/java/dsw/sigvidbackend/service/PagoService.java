@@ -80,8 +80,10 @@ public class PagoService {
         Pedido pedido = pedidoRepository.findById(request.getIdPedido())
                 .orElseThrow(() -> new NoSuchElementException("Pedido no encontrado con ID: " + request.getIdPedido()));
 
-        if ("Pagado".equalsIgnoreCase(pedido.getEstado().getNombre())) {
-            throw new IllegalArgumentException("El pedido " + pedido.getCodigoPedido() + " ya se encuentra pagado");
+        // solo se cobran pedidos en estado "Propuesto" (evita pagar dos veces o pagar pedidos ya derivados)
+        if (!"Propuesto".equalsIgnoreCase(pedido.getEstado().getNombre())) {
+            throw new IllegalArgumentException("El pedido " + pedido.getCodigoPedido()
+                    + " no se puede cobrar porque está en estado '" + pedido.getEstado().getNombre() + "'");
         }
 
         // obtener metodo de pago (efectivo, tarjeta, transferencia)
@@ -97,7 +99,13 @@ public class PagoService {
                     .orElseThrow(() -> new NoSuchElementException("Método de pago por defecto no encontrado"));
         }
 
-        // obtener cajero y asegurar registro en tabla cajeros 
+        // tarjeta o transferencia: el voucher digital (imagen o pdf) es obligatorio (HU05 5.4)
+        if (!"Efectivo".equalsIgnoreCase(metodo.getNombre())
+                && (request.getVoucherBase64() == null || request.getVoucherBase64().isBlank())) {
+            throw new IllegalArgumentException("Para pagos con " + metodo.getNombre() + " debe adjuntar el voucher digital (imagen o PDF)");
+        }
+
+        // obtener cajero y asegurar registro en tabla cajeros
         Usuario cajero = request.getIdCajero() != null
                 ? usuarioRepository.findById(request.getIdCajero()).orElse(pedido.getVendedor())
                 : pedido.getVendedor();

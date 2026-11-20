@@ -1,5 +1,10 @@
 package dsw.sigvidbackend.controller;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import dsw.sigvidbackend.model.Usuario;
+
+import jakarta.validation.Valid;
+
 import dsw.sigvidbackend.dto.PerfilUpdateRequest;
 import dsw.sigvidbackend.dto.UsuarioRequest;
 import dsw.sigvidbackend.dto.UsuarioResponse;
@@ -27,13 +32,18 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarioService.listarUsuarios());
     }
 
+    // perfil propio: el email sale del token, no del request
     @GetMapping("/perfil")
-    public ResponseEntity<UsuarioResponse> obtenerPerfil(@RequestParam String email) {
-        return ResponseEntity.ok(usuarioService.obtenerPerfilPorEmail(email));
+    public ResponseEntity<UsuarioResponse> obtenerPerfil(@AuthenticationPrincipal Usuario usuario) {
+        return ResponseEntity.ok(usuarioService.obtenerPerfilPorEmail(usuario.getEmail()));
     }
 
     @PutMapping("/perfil")
-    public ResponseEntity<UsuarioResponse> actualizarPerfil(@RequestBody PerfilUpdateRequest datos) {
+    public ResponseEntity<UsuarioResponse> actualizarPerfil(
+            @AuthenticationPrincipal Usuario usuario,
+            @Valid @RequestBody PerfilUpdateRequest datos) {
+        // solo se puede actualizar el perfil propio
+        datos.setEmail(usuario.getEmail());
         logger.info(">actualizarPerfil: {}", datos.getEmail());
         return ResponseEntity.ok(usuarioService.actualizarPerfilPorEmail(datos));
     }
@@ -49,7 +59,7 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<UsuarioResponse> crear(@RequestBody UsuarioRequest request) {
+    public ResponseEntity<UsuarioResponse> crear(@Valid @RequestBody UsuarioRequest request) {
         logger.info(">crear usuario: {}", request.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.crearUsuario(request));
     }
@@ -57,7 +67,7 @@ public class UsuarioController {
     @PutMapping("/{id}")
     public ResponseEntity<UsuarioResponse> actualizar(
             @PathVariable Long id,
-            @RequestBody UsuarioRequest request) {
+            @Valid @RequestBody UsuarioRequest request) {
         logger.info(">actualizar usuario id={}", id);
         return ResponseEntity.ok(usuarioService.actualizarUsuario(id, request));
     }
