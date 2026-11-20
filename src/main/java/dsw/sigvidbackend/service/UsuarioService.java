@@ -43,18 +43,27 @@ public class UsuarioService {
     public UsuarioResponse buscarPorDocumento(String documento) {
         String doc = documento == null ? "" : documento.trim();
         if (doc.matches(Patrones.DNI)) {
-            return usuarioRepository.findByDni(doc)
-                    .map(UsuarioResponse::fromEntity)
+            Usuario usuario = usuarioRepository.findByDni(doc)
                     .orElseThrow(() -> new NoSuchElementException("No se encontró cliente con DNI: " + doc));
+            validarEsCliente(usuario);
+            return UsuarioResponse.fromEntity(usuario);
         }
         if (doc.matches(Patrones.RUC)) {
             Cliente cliente = clienteRepository.findByRuc(doc)
                     .orElseThrow(() -> new NoSuchElementException("No se encontró cliente con RUC: " + doc));
-            return usuarioRepository.findById(cliente.getIdUsuario())
-                    .map(UsuarioResponse::fromEntity)
+            Usuario usuario = usuarioRepository.findById(cliente.getIdUsuario())
                     .orElseThrow(() -> new NoSuchElementException("No se encontró el usuario del RUC: " + doc));
+            validarEsCliente(usuario);
+            return UsuarioResponse.fromEntity(usuario);
         }
         throw new IllegalArgumentException("El documento debe ser un DNI de 8 dígitos o un RUC de 11 dígitos");
+    }
+
+    private void validarEsCliente(Usuario usuario) {
+        String rolNombre = usuario.getRol() != null ? usuario.getRol().getNombre() : "";
+        if (!"Cliente".equalsIgnoreCase(rolNombre)) {
+            throw new NoSuchElementException("El documento ingresado no corresponde a un cliente registrado.");
+        }
     }
 
     public UsuarioResponse obtenerPerfilPorEmail(String email) {
