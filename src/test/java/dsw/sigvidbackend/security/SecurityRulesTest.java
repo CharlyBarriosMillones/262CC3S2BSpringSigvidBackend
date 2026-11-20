@@ -17,7 +17,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// pruebas de las reglas de acceso por rol de SecurityConfig (sin base de datos)
 @WebMvcTest(controllers = {PedidoController.class, PagoController.class, StockController.class,
         RecepcionController.class, DashboardController.class, AuthController.class, ProductoController.class})
 @Import(SecurityConfig.class)
@@ -25,7 +24,6 @@ class SecurityRulesTest {
 
     @Autowired MockMvc mvc;
 
-    // dependencias del filtro JWT y de los controllers
     @MockitoBean JwtUtil jwtUtil;
     @MockitoBean UsuarioRepository usuarioRepository;
     @MockitoBean PedidoService pedidoService;
@@ -39,14 +37,15 @@ class SecurityRulesTest {
     @Test
     void sinTokenDevuelve401() throws Exception {
         mvc.perform(get("/api/pedidos")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/dashboard/pedidos-estado")).andExpect(status().isUnauthorized());
     }
 
     @Test
     @WithMockUser(roles = "CLIENTE")
-    void clienteNoConsultaPedidosNiDashboardNiStock() throws Exception {
+    void clienteVeDashboardPeroNoPedidosGlobalesNiStock() throws Exception {
+        mvc.perform(get("/api/dashboard/pedidos-estado")).andExpect(status().isOk());
         mvc.perform(get("/api/pedidos")).andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
-        mvc.perform(get("/api/dashboard/pedidos-estado")).andExpect(status().isForbidden());
         mvc.perform(get("/api/stock")).andExpect(status().isForbidden());
         mvc.perform(post("/api/productos/save").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isForbidden());
