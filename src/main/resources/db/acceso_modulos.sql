@@ -1,5 +1,5 @@
 -- ============================================================
--- MÓDULO DE ACCESO Y MENÚ DINÁMICO POR ROL — SIGVID (NEON)
+-- MODULO DE ACCESO Y MENU DINAMICO POR ROL
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.modulos (
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.rol_modulo (
     PRIMARY KEY (id_rol, id_mod)
 );
 
--- Insertar Módulos del Sistema SIGVID (Sprints 1 y 2)
+-- insertar modulos del sistema
 INSERT INTO public.modulos (id_mod, nombre, descripcion, url, icono, activo, orden_opcion) VALUES
 (1, 'Mi Perfil y Preferencias', 'Edita tus datos básicos, foto de perfil y notificaciones por email.', '/principal/perfil', 'bi-person-lines-fill', true, 1),
 (2, 'Catálogo Vitivinícola', 'Explora vinos, piscos y corchos con filtros por categoría y marca.', '/principal/catalogo', 'bi-collection-fill', true, 2),
