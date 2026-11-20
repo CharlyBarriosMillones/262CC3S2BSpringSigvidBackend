@@ -23,7 +23,7 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secretKey;
 
-    @Value("36000000") // 10 horas
+    @Value("3600000") // 1 hora
     private long jwtExpiration;
 
     public String generateToken(Usuario usuario, List<Modulo> modules) {
