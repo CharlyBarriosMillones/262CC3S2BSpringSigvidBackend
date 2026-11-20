@@ -85,6 +85,11 @@ public class PedidoService {
             throw new IllegalArgumentException("Debe indicar el ID, DNI o RUC del cliente");
         }
 
+        String rolCliente = cliente.getRol() != null ? cliente.getRol().getNombre() : "";
+        if (!"Cliente".equalsIgnoreCase(rolCliente)) {
+            throw new IllegalArgumentException("El documento ingresado no corresponde a un cliente registrado.");
+        }
+        
         // asegurar registro en tabla "clientes" 
         if (!clienteRepository.existsById(cliente.getIdUsuario())) {
             clienteRepository.saveAndFlush(new Cliente(
